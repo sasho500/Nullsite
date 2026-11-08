@@ -8,7 +8,7 @@
 attack, detect, and remediate vulnerabilities inside isolated sandboxes.*
 
 ![Status](https://img.shields.io/badge/status-early%20development-orange)
-![License](https://img.shields.io/badge/license-Apache%202.0-blue)
+![License](https://img.shields.io/badge/license-MIT-blue)
 ![Python](https://img.shields.io/badge/python-3.11%2B-3776AB?logo=python&logoColor=white)
 ![LangGraph](https://img.shields.io/badge/orchestration-LangGraph-1C3C3C)
 ![Docker](https://img.shields.io/badge/sandbox-Docker-2496ED?logo=docker&logoColor=white)
@@ -16,19 +16,30 @@ attack, detect, and remediate vulnerabilities inside isolated sandboxes.*
 [Concept](#-concept) •
 [How it works](#-how-it-works) •
 [Architecture](#-architecture) •
-[Quick start](#-quick-start) •
+[Implementation status](#implementation-status) •
 [Roadmap](#-roadmap) •
 [Safety](#-safety-model) •
 [Contributing](#-contributing)
 
 </div>
 
+## Implementation status
+
+Nullsite is currently a design-stage repository. There is no application code,
+Docker configuration, or verified sandbox isolation yet. The workflows and
+safety rules below describe intended behavior, not implemented guarantees.
+
+The planned stack is React + TypeScript, Django + Django REST Framework,
+PostgreSQL, Docker Compose, and Python orchestration with future multi-agent
+support. See the [architecture and MVP baseline](docs/architecture/overview.md)
+and [threat model and acceptance gates](docs/security/threat-model.md).
+
 ---
 
 > [!WARNING]
 > Nullsite runs offensive security agents. Use it **only** against systems you own
-> or are explicitly authorized to test. Every target runs inside an isolated
-> sandbox by design — never point it at the open internet.
+> or are explicitly authorized to test. The planned sandbox must pass its
+> isolation acceptance gates before autonomous execution. Never target the open internet.
 
 ---
 
@@ -68,7 +79,7 @@ flowchart LR
 2. **Attack** — Red agents map the target and attempt exploitation within a defined scope.
 3. **Defend** — Blue agents watch logs and traffic, spot the attack, and trace the cause.
 4. **Fix** — Blue proposes (or, if allowed, applies) a patch or configuration change.
-5. **Retest** — Red attacks again. The vulnerability is only "closed" when the retest fails.
+5. **Retest** — Red repeats a valid regression check. A finding is closed only when the exploit no longer succeeds and target health checks pass; tool failures are inconclusive.
 6. **Measure** — every action, finding, and outcome lands in the database and on dashboards.
 
 ---
@@ -78,10 +89,10 @@ flowchart LR
 ```mermaid
 flowchart TB
     subgraph Control["Control plane"]
-        O[LangGraph orchestrator]
+        O[Python orchestration worker]
         P[Policy & approval gate]
         DB[(PostgreSQL<br/>findings & audit log)]
-        G[Grafana dashboards]
+        G[Django REST API and React dashboard]
     end
 
     subgraph Agents["Agents"]
@@ -100,21 +111,24 @@ flowchart TB
     O --> R & BL
     R -->|every action| P
     BL -->|every action| P
-    P -->|approved| Arena
+    X[Constrained sandbox runner]
+    P -->|authorized action| X
+    X -->|validated execution| Arena
     M --> BL
-    R & BL --> DB
-    DB --> G
+    O -->|domain services| DB
+    G -->|authorized queries| DB
 ```
 
 **Key design rules**
 
 - **Every agent action passes the policy gate.** Scope, rate limits, and allowed
   techniques are enforced in code, not in prompts.
-- **Disruptive actions need human approval.** Destructive commands, patches to
-  running services, and anything outside scope wait for a person.
+- **Disruptive in-scope actions need human approval.** Approvals bind to exact
+  actions and expire. Out-of-scope actions are rejected.
 - **The arena has no route out.** Targets live on internal networks with egress blocked.
-- **Everything is logged.** Each prompt, tool call, and result is written to an
-  append-only audit trail.
+- **Actions are audited.** Redacted model inputs/outputs, tool calls, approvals,
+  and results require protected audit persistence. Secrets and hidden model
+  reasoning are not audit requirements.
 
 ---
 
@@ -122,13 +136,14 @@ flowchart TB
 
 | Layer | Tools |
 |---|---|
-| Core | Python |
-| Agent reasoning | OpenAI & Anthropic models |
-| Orchestration | LangGraph |
-| Sandboxing | Docker, Kubernetes |
-| Provisioning | Terraform, Ansible |
+| Frontend | React + TypeScript |
+| Backend | Django + Django REST Framework |
+| Core and orchestration | Python worker; LangGraph under consideration |
+| Agent reasoning | Provider adapters; OpenAI and Anthropic candidates |
+| Infrastructure | Docker Compose |
+| Sandboxing | Docker arenas on disposable dedicated VM/worker hosts |
 | Storage | PostgreSQL |
-| Observability | Grafana |
+| Visibility | React run dashboard and structured audit events; Grafana deferred |
 | Targets | OWASP Juice Shop and other intentionally vulnerable apps |
 
 
@@ -151,7 +166,7 @@ Nullsite exists to make systems safer. The guardrails are part of the product:
 
 - 🔒 **Isolation first** — targets run on sealed networks with no internet egress.
 - 📜 **Rules of engagement as code** — each scenario declares what is in scope.
-- ✋ **Human approval** for anything disruptive or out of scope.
+- ✋ **Human approval** for disruptive in-scope actions; out-of-scope actions are denied.
 - 🧾 **Full audit trail** of every agent decision and action.
 - 🚫 **No real-world targets.** Pull requests that add targeting of third-party
   systems will be rejected.
@@ -173,7 +188,7 @@ advisory instead of a public issue.
 
 ## 📄 License
 
-Released under the [Apache License 2.0](LICENSE).
+Released under the [MIT License](LICENSE).
 
 <div align="center">
 
