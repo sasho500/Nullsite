@@ -131,51 +131,8 @@ flowchart TB
 | Observability | Grafana |
 | Targets | OWASP Juice Shop and other intentionally vulnerable apps |
 
----
 
-## 🚀 Quick start
 
-> [!NOTE]
-> Nullsite is in early development. The commands below describe the
-> intended phase 1 workflow and will change as the code lands.
-
-```bash
-# 1. Clone
-git clone https://github.com/<your-username>/nullsite.git
-cd nullsite
-
-# 2. Configure your model keys
-cp .env.example .env
-# edit .env → OPENAI_API_KEY / ANTHROPIC_API_KEY
-
-# 3. Start the isolated arena (Juice Shop + collectors + database)
-docker compose up -d
-
-# 4. Run a first match
-python -m nullsite run --scenario juice-shop-basic
-```
-
----
-
-## 📁 Project structure (planned)
-
-```
-nullsite/
-├── agents/
-│   ├── red/            # recon, exploitation, reporting agents
-│   └── blue/           # detection, investigation, remediation agents
-├── orchestrator/       # LangGraph graphs and match flow
-├── policy/             # rules of engagement, approval gate
-├── scenarios/          # target definitions (compose / k8s manifests)
-├── infra/
-│   ├── terraform/
-│   └── ansible/
-├── storage/            # PostgreSQL schema & migrations
-├── dashboards/         # Grafana dashboards
-└── docs/
-```
-
----
 
 ## 🗺️ Roadmap
 
